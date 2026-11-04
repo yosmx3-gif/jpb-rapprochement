@@ -1,0 +1,8 @@
+{
+  "name": "AuditBTP - Contrôle Budgétaire & Facturation Chantiers",
+  "description": "Exploration d'arborescences de chantiers et corps d'état avec comparaison automatique des factures à l'acte d'engagement et détection des écarts budgétaires.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
