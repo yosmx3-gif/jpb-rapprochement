@@ -175,6 +175,7 @@ export async function parseFolderStructure(files: File[]): Promise<Chantier[]> {
           retenueGarantiePct: parsed.retenueGarantiePct || 5,
           rawContent: parsed.previewText,
           isAiParsed: parsed.isMontantExtrait,
+          isMultimodal: parsed.isMultimodal,
           justification: parsed.justification,
         };
       }
@@ -218,6 +219,7 @@ export async function parseFolderStructure(files: File[]): Promise<Chantier[]> {
           statutPaiement: 'validee',
           rawContent: parsed.previewText,
           isAiParsed: parsed.isMontantExtrait,
+          isMultimodal: parsed.isMultimodal,
           justification: parsed.justification,
         });
       }

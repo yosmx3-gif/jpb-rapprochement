@@ -29,7 +29,14 @@ interface CorpsDetatAuditProps {
   corpsDetat: CorpsDetat;
   moisTraitement: string;
   onOpenParametrage: () => void;
-  onViewFile: (fileInfo: { name: string; path: string; category: string; content?: string }) => void;
+  onViewFile: (fileInfo: {
+    name: string;
+    path: string;
+    category: string;
+    content?: string;
+    justification?: string;
+    isMultimodal?: boolean;
+  }) => void;
   onGenerateAuditReport: (corpsDetat: CorpsDetat, chantier: Chantier) => void;
   onAddFactureModal: (corpsDetatId: string) => void;
 }
@@ -425,6 +432,8 @@ export const CorpsDetatAudit: React.FC<CorpsDetatAuditProps> = ({
                       path: acteEngagement.filePath,
                       category: "Acte d'Engagement",
                       content: acteEngagement.rawContent,
+                      justification: acteEngagement.justification,
+                      isMultimodal: acteEngagement.isMultimodal,
                     })
                   }
                   className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-900 font-medium"
@@ -470,15 +479,19 @@ export const CorpsDetatAudit: React.FC<CorpsDetatAuditProps> = ({
 
                 <div className="grid grid-cols-2 gap-3 pt-1 border-t border-neutral-100">
                   <div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-[11px] text-slate-500">Total T.T.C. (Article 2)</span>
-                      {acteEngagement.isAiParsed ? (
-                        <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">
+                      {acteEngagement.isMultimodal ? (
+                        <span className="text-[9px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                          Extrait certifié (Gemini 3.8 Flash)
+                        </span>
+                      ) : acteEngagement.isAiParsed ? (
+                        <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                           Extrait certifié
                         </span>
                       ) : (
                         <span className="text-[9px] font-medium text-amber-700 bg-amber-50 px-1 py-0.2 rounded border border-amber-200">
-                          {acteEngagement.montantTTC === 0 ? 'Non extrait' : 'Manuel'}
+                          <span className="inline-block">{acteEngagement.montantTTC === 0 ? 'Non extrait' : 'Manuel'}</span>
                         </span>
                       )}
                     </div>
@@ -505,9 +518,15 @@ export const CorpsDetatAudit: React.FC<CorpsDetatAuditProps> = ({
                 </div>
 
                 {acteEngagement.justification ? (
-                  <div className="p-2 bg-emerald-50/70 border border-emerald-200 rounded text-[11px] text-emerald-900">
-                    <span className="font-semibold">Source certifiée : </span>
-                    <span>{acteEngagement.justification}</span>
+                  <div className={`p-2.5 rounded text-[11px] border ${
+                    acteEngagement.isMultimodal
+                      ? 'bg-indigo-50/70 border-indigo-200 text-indigo-950'
+                      : 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+                  }`}>
+                    <span className="font-semibold">
+                      <span className="inline-block">{acteEngagement.isMultimodal ? 'Mise en page certifiée (Gemini 3.8 Flash) : ' : 'Source certifiée : '}</span>
+                    </span>
+                    <span className="inline-block">{acteEngagement.justification}</span>
                   </div>
                 ) : null}
 
@@ -725,7 +744,12 @@ export const CorpsDetatAudit: React.FC<CorpsDetatAuditProps> = ({
                             <span>% · TTC </span>
                             <span>{formatMontant(f.montantTTC)}</span>
                           </div>
-                          {f.justification ? (
+                          {f.isMultimodal ? (
+                            <div className="text-[9px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded mt-1 border border-indigo-200 max-w-xs truncate flex items-center gap-1" title={f.justification}>
+                              <span className="font-semibold shrink-0">Gemini 3.8 Flash :</span>
+                              <span className="truncate">{f.justification || 'Mise en page certifiée'}</span>
+                            </div>
+                          ) : f.justification ? (
                             <div className="text-[9px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded mt-1 border border-emerald-100 max-w-xs truncate" title={f.justification}>
                               <span>{f.justification}</span>
                             </div>
@@ -766,6 +790,8 @@ export const CorpsDetatAudit: React.FC<CorpsDetatAuditProps> = ({
                                 path: f.filePath,
                                 category: 'Facture',
                                 content: f.rawContent,
+                                justification: f.justification,
+                                isMultimodal: f.isMultimodal,
                               })
                             }
                             className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"

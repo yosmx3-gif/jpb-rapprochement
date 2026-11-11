@@ -27,6 +27,7 @@ export interface ActeEngagement {
   clausesParticulieres?: string;
   rawContent?: string;
   isAiParsed?: boolean;
+  isMultimodal?: boolean;
   justification?: string;
 }
 
@@ -47,6 +48,7 @@ export interface Facture {
   commentaires?: string;
   rawContent?: string;
   isAiParsed?: boolean;
+  isMultimodal?: boolean;
   justification?: string;
 }
 

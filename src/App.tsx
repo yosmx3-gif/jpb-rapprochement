@@ -111,6 +111,8 @@ export default function App() {
     path: string;
     category: string;
     content?: string;
+    justification?: string;
+    isMultimodal?: boolean;
   } | null>(null);
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -226,6 +228,8 @@ export default function App() {
     path: string;
     category: string;
     content?: string;
+    justification?: string;
+    isMultimodal?: boolean;
   }) => {
     setFileViewerData(fileInfo);
     setIsFileViewerOpen(true);

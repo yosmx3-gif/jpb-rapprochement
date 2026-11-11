@@ -118,7 +118,7 @@ export async function extractTextFromBlobOrBuffer(
     const buffer = data instanceof Blob ? await data.arrayBuffer() : data;
     try {
       const loadingTask = pdfjsLib.getDocument({
-        data: new Uint8Array(buffer),
+        data: new Uint8Array(buffer.slice(0)),
         useSystemFonts: true,
         verbosity: 0,
       });
@@ -177,6 +177,7 @@ export interface ExtractedFinancialData {
   siret?: string;
   retenueGarantiePct?: number;
   isMontantExtrait: boolean;
+  isMultimodal?: boolean;
   justification?: string;
   previewText: string;
 }
@@ -462,18 +463,142 @@ export function parseNumberString(raw: string): number {
 }
 
 /**
- * Analyse de fichier uploadé local via l'analyse intelligente autonome
+ * Convertit un Blob ou ArrayBuffer en base64 pur (sans entête data URL)
+ */
+export function blobToBase64(data: Blob | ArrayBuffer): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let blob: Blob;
+    if (data instanceof Blob) {
+      blob = data;
+    } else {
+      blob = new Blob([data]);
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const res = reader.result as string;
+      if (!res) {
+        resolve('');
+        return;
+      }
+      const commaIdx = res.indexOf(',');
+      resolve(commaIdx !== -1 ? res.substring(commaIdx + 1) : res);
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * ANALYSE MULTIMODALE NATIVE (Gemini 3.8 Flash) :
+ * Transmet l'image ou le PDF complet sous forme de données binaires inlineData (base64)
+ * au backend /api/analyze-multimodal pour une lecture directe de la mise en page originale
+ * (tableaux, encadrés, Article 2 Total TTC, pied de facture Net à payer).
+ *
+ * Bascule automatiquement et silencieusement sur l'analyse sémantique locale en cas de réseau hors-ligne.
+ */
+export async function analyzeDocumentMultimodal(
+  data: Blob | ArrayBuffer,
+  fileName: string,
+  mimeType?: string,
+  categoryHint?: 'acte_engagement' | 'facture' | 'avenant' | 'autre'
+): Promise<ExtractedFinancialData> {
+console.log('[FRONT] analyzeDocumentMultimodal appelé pour', fileName);
+  // 1. Extraction textuelle préalable servant de filet de sécurité (textFallback)
+  let textFallback = '';
+  try {
+    textFallback = await extractTextFromBlobOrBuffer(data, fileName, mimeType);
+  } catch (e) {
+    console.warn('Extraction texte préalable :', e);
+  }
+
+  // 2. Conversion binaire base64 pour transmission visuelle à Gemini 3.8 Flash
+  try {
+    const fileBase64 = await blobToBase64(data);
+console.log('[FRONT] base64 longueur =', fileBase64 ? fileBase64.length : 0, '| type =', Object.prototype.toString.call(data), '| taille =', (data as any).size ?? (data as any).byteLength);
+    if (fileBase64 && fileBase64.length > 50) {
+      const detectedMime =
+        mimeType && mimeType.includes('/')
+          ? mimeType.split(';')[0].trim()
+          : fileName.toLowerCase().endsWith('.pdf')
+          ? 'application/pdf'
+          : 'application/octet-stream';
+
+      const response = await fetch('/api/analyze-multimodal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileBase64,
+          mimeType: detectedMime,
+          fileName,
+          categoryHint,
+          textFallback,
+        }),
+      });
+
+console.log('[FRONT] réponse analyze-multimodal status =', response.status);
+      if (response.ok) {
+        const result = await response.json();
+        if (result && (result.montantTTC > 0 || result.montantHT > 0 || result.isMontantExtrait)) {
+          return {
+            category: result.category || categoryHint || 'autre',
+            montantHT: result.montantHT || 0,
+            tauxTVA: result.tauxTVA !== undefined ? result.tauxTVA : 20,
+            montantTTC: result.montantTTC || 0,
+            date: result.date,
+            numero: result.numero,
+            entreprise: result.entreprise,
+            siret: result.siret,
+            retenueGarantiePct: result.retenueGarantiePct ?? 5,
+            isMontantExtrait: Boolean(result.isMontantExtrait),
+            isMultimodal: Boolean(result.isMultimodal),
+            justification: result.justification || 'Analyse multimodale de la mise en page (Gemini 3.8 Flash)',
+            previewText:
+              textFallback.substring(0, 500).replace(/\s+/g, ' ').trim() ||
+              `Document analysé par Gemini 3.8 Flash : ${fileName}`,
+          };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Bascule sur analyse sémantique locale :', err);
+  }
+
+  // Repli automatique local de haute précision
+  const fallback = await analyzeDocumentIntelligently(textFallback, fileName, categoryHint);
+  return {
+    ...fallback,
+    isMultimodal: false,
+  };
+}
+
+/**
+ * Analyse de fichier uploadé local via l'analyse multimodale Gemini 3.8 Flash
  */
 export async function parseUploadedFile(
-  file: File,
+  file: File | Blob | { name: string; blob?: Blob; arrayBuffer?: () => Promise<ArrayBuffer>; lastModified?: number },
   category?: 'acte_engagement' | 'facture' | 'avenant'
 ): Promise<ExtractedFinancialData> {
-  const content = await extractTextFromBlobOrBuffer(file, file.name, file.type);
-  const data = await analyzeDocumentIntelligently(content, file.name, category);
+  const fileName = (file as any).name || 'document.pdf';
+  const fileMime = (file as any).type || 'application/pdf';
+
+  let dataBlob: Blob | ArrayBuffer;
+  if (file instanceof Blob) {
+    dataBlob = file;
+  } else if ((file as any).blob instanceof Blob) {
+    dataBlob = (file as any).blob;
+  } else if (typeof (file as any).arrayBuffer === 'function') {
+    dataBlob = await (file as any).arrayBuffer();
+  } else {
+    return analyzeDocumentIntelligently('', fileName, category);
+  }
+
+  const data = await analyzeDocumentMultimodal(dataBlob, fileName, fileMime, category);
 
   // Si aucune date trouvée dans le document, date de modification du fichier
   if (!data.date) {
-    const fileDate = new Date(file.lastModified || Date.now());
+    const fileDate = new Date((file as any).lastModified || Date.now());
     data.date = fileDate.toISOString().split('T')[0];
   }
 

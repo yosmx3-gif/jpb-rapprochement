@@ -12,6 +12,7 @@ import { ActeEngagement, Avenant, Chantier, CorpsDetat, Facture } from '../types
 import { computeChantierMetrics, computeCorpsDetatMetrics } from './calculator';
 import {
   analyzeDocumentIntelligently,
+  analyzeDocumentMultimodal,
   detectDocumentCategory,
   extractFinancialDataFromContent,
   extractTextFromBlobOrBuffer,
@@ -539,13 +540,16 @@ export const importGoogleDriveProjectTree = async (
         for (const file of containerFiles) {
           const cat = detectDocumentCategory(file.name, file.name);
           if (cat === 'facture' || /facture|situation|fac-|decompte/i.test(file.name)) {
-            if (onProgress) onProgress(`Lecture flux : ${file.name}...`);
+            if (onProgress) onProgress(`Lecture visuelle multimodale : ${file.name}...`);
             let contentText = '';
             const streamBuffer = await downloadDriveFileStream(token, file.id, file.mimeType);
+            let extracted;
             if (streamBuffer) {
-              contentText = await extractTextFromBlobOrBuffer(streamBuffer, file.name, file.mimeType);
+              extracted = await analyzeDocumentMultimodal(streamBuffer, file.name, file.mimeType, 'facture');
+              contentText = extracted.previewText || '';
+            } else {
+              extracted = await analyzeDocumentIntelligently('', file.name, 'facture');
             }
-            const extracted = await analyzeDocumentIntelligently(contentText, file.name, 'facture');
             const dateEmission =
               extracted.date ||
               (file.createdTime ? file.createdTime.slice(0, 10) : new Date().toISOString().slice(0, 10));
@@ -567,6 +571,7 @@ export const importGoogleDriveProjectTree = async (
               statutPaiement: 'validee',
               rawContent: contentText ? contentText.slice(0, 1000) : `Fichier Drive: ${file.name}`,
               isAiParsed: extracted.isMontantExtrait,
+              isMultimodal: extracted.isMultimodal,
               justification: extracted.justification,
             });
           }
@@ -638,17 +643,18 @@ export const importGoogleDriveProjectTree = async (
         }
 
         if (onProgress) {
-          onProgress(`Lecture du flux : ${file.name} (${lotFolder.name})...`);
+          onProgress(`Lecture visuelle multimodale : ${file.name} (${lotFolder.name})...`);
         }
 
         let contentText = '';
         const streamBuffer = await downloadDriveFileStream(token, file.id, file.mimeType);
+        let extracted;
         if (streamBuffer) {
-          contentText = await extractTextFromBlobOrBuffer(streamBuffer, file.name, file.mimeType);
+          extracted = await analyzeDocumentMultimodal(streamBuffer, file.name, file.mimeType, category);
+          contentText = extracted.previewText || '';
+        } else {
+          extracted = await analyzeDocumentIntelligently('', file.name, category);
         }
-
-        // Analyse intelligente sémantique du contenu textuel interne du document
-        const extracted = await analyzeDocumentIntelligently(contentText, file.name, category);
 
         const dateEmission =
           extracted.date ||
@@ -675,6 +681,7 @@ export const importGoogleDriveProjectTree = async (
             retenueGarantiePct: 0,
             rawContent: contentText ? contentText.slice(0, 1000) : `Document Google Drive ID: ${file.id}\nFichier: ${file.name}`,
             isAiParsed: extracted.isMontantExtrait,
+            isMultimodal: extracted.isMultimodal,
             justification: extracted.justification,
           };
         } else if (extracted.category === 'avenant' || category === 'avenant') {
@@ -705,6 +712,7 @@ export const importGoogleDriveProjectTree = async (
             statutPaiement: 'validee',
             rawContent: contentText ? contentText.slice(0, 1000) : `Fichier Drive: ${file.name}\nCréé le: ${file.createdTime}`,
             isAiParsed: extracted.isMontantExtrait,
+            isMultimodal: extracted.isMultimodal,
             justification: extracted.justification,
           });
         }

@@ -1,0 +1,49 @@
+nohup: ignoring input
+$ tsx server.ts
+◇ injected env (2) from .env // tip: ⌘ suppress logs { quiet: true }
+[CONFIG] GCP_PROJECT_ID = défini | PORT = 8080
+✅ Client Vertex AI initialisé | projet=project-d3cc2a84-3208-4d01-bb6 | location=global
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vite.config.ts:12:26). Use `import.meta.dirname` instead
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+[FullStack] Serveur AuditBTP démarré sur http://0.0.0.0:8080
+[ANALYSE] Requête reçue : fichier="test.pdf" | mime=application/pdf | base64=20 car. | aiClient=OK | quota bloqué=false
+[GEMINI] Appel en cours → gemini-3.8-flash / global
+[GEMINI] ❌ Erreur sur "test.pdf" | status=400 | code=undefined | message={"error":{"code":400,"message":"Request contains an invalid argument.","status":"INVALID_ARGUMENT"}}
+[ANALYSE] Requête reçue : fichier="test-facture.pdf" | mime=application/pdf | base64=976 car. | aiClient=OK | quota bloqué=false
+[GEMINI] Appel en cours → gemini-3.8-flash / global
+[GEMINI] ✅ Réponse reçue | modèle : gemini-3.8-flash | tokens : {"promptTokenCount":1563,"candidatesTokenCount":112,"totalTokenCount":1914,"trafficType":"ON_DEMAND","promptTokensDetails":[{"modality":"TEXT","tokenCount":1043},{"modality":"IMAGE","tokenCount":520}],"candidatesTokensDetails":[{"modality":"TEXT","tokenCount":112}],"thoughtsTokenCount":239}
+11:18:09 AM [vite] (client) hmr update /src/index.css
+11:39:55 AM [vite] (client) hmr update /src/index.css, /src/components/GoogleDriveFolderSelector.tsx
+11:47:01 AM [vite] (client) hmr update /src/index.css, /src/components/GoogleDriveFolderSelector.tsx
+11:53:36 AM [vite] (client) hmr update /src/index.css, /src/components/GoogleDriveFolderSelector.tsx
+[ANALYSE] Requête reçue : fichier="Facture n° FA1702.pdf" | mime=application/pdf | base64=532420 car. | aiClient=OK | quota bloqué=false
+[GEMINI] Appel en cours → gemini-3.8-flash / global
+[GEMINI] ✅ Réponse reçue | modèle : gemini-3.8-flash | tokens : {"promptTokenCount":2112,"candidatesTokenCount":241,"totalTokenCount":2774,"trafficType":"ON_DEMAND","promptTokensDetails":[{"modality":"IMAGE","tokenCount":1064},{"modality":"TEXT","tokenCount":1048}],"candidatesTokensDetails":[{"modality":"TEXT","tokenCount":241}],"thoughtsTokenCount":421}
+[ANALYSE] Requête reçue : fichier="Facture reprise de gouttière.pdf" | mime=application/pdf | base64=759876 car. | aiClient=OK | quota bloqué=false
+[GEMINI] Appel en cours → gemini-3.8-flash / global
+[GEMINI] ✅ Réponse reçue | modèle : gemini-3.8-flash | tokens : {"promptTokenCount":1578,"candidatesTokenCount":234,"totalTokenCount":2052,"trafficType":"ON_DEMAND","promptTokensDetails":[{"modality":"IMAGE","tokenCount":532},{"modality":"TEXT","tokenCount":1046}],"candidatesTokensDetails":[{"modality":"TEXT","tokenCount":234}],"thoughtsTokenCount":240}
+[ANALYSE] Requête reçue : fichier="Acte dengagement LLTP - Thobie.pdf" | mime=application/pdf | base64=973204 car. | aiClient=OK | quota bloqué=false
+[GEMINI] Appel en cours → gemini-3.8-flash / global
+[GEMINI] ✅ Réponse reçue | modèle : gemini-3.8-flash | tokens : {"promptTokenCount":9560,"candidatesTokenCount":267,"totalTokenCount":10501,"trafficType":"ON_DEMAND","promptTokensDetails":[{"modality":"TEXT","tokenCount":1048},{"modality":"IMAGE","tokenCount":8512}],"candidatesTokensDetails":[{"modality":"TEXT","tokenCount":267}],"thoughtsTokenCount":674}
+[ANALYSE] Requête reçue : fichier="Facture LLTP Septembre 2025.pdf" | mime=application/pdf | base64=365792 car. | aiClient=OK | quota bloqué=false
+[GEMINI] Appel en cours → gemini-3.8-flash / global
+[GEMINI] ✅ Réponse reçue | modèle : gemini-3.8-flash | tokens : {"promptTokenCount":2114,"candidatesTokenCount":279,"totalTokenCount":3285,"trafficType":"ON_DEMAND","promptTokensDetails":[{"modality":"TEXT","tokenCount":1050},{"modality":"IMAGE","tokenCount":1064}],"candidatesTokensDetails":[{"modality":"TEXT","tokenCount":279}],"thoughtsTokenCount":892}
+[ANALYSE] Requête reçue : fichier="Acte dengagement- Thobie - Crusson.pdf" | mime=application/pdf | base64=985100 car. | aiClient=OK | quota bloqué=false
+[GEMINI] Appel en cours → gemini-3.8-flash / global
+[GEMINI] ✅ Réponse reçue | modèle : gemini-3.8-flash | tokens : {"promptTokenCount":10093,"candidatesTokenCount":260,"totalTokenCount":11055,"trafficType":"ON_DEMAND","promptTokensDetails":[{"modality":"IMAGE","tokenCount":9044},{"modality":"TEXT","tokenCount":1049}],"candidatesTokensDetails":[{"modality":"TEXT","tokenCount":260}],"thoughtsTokenCount":702}
+[ANALYSE] Requête reçue : fichier="Facture Crusson - Aout 2026.pdf" | mime=application/pdf | base64=283184 car. | aiClient=OK | quota bloqué=false
+[GEMINI] Appel en cours → gemini-3.8-flash / global
+[GEMINI] ✅ Réponse reçue | modèle : gemini-3.8-flash | tokens : {"promptTokenCount":4775,"candidatesTokenCount":297,"totalTokenCount":5579,"trafficType":"ON_DEMAND","promptTokensDetails":[{"modality":"IMAGE","tokenCount":3724},{"modality":"TEXT","tokenCount":1051}],"candidatesTokensDetails":[{"modality":"TEXT","tokenCount":297}],"thoughtsTokenCount":507}
+[ANALYSE] Requête reçue : fichier="Facture Crusson - Avril 2026.pdf" | mime=application/pdf | base64=291492 car. | aiClient=OK | quota bloqué=false
+[GEMINI] Appel en cours → gemini-3.8-flash / global
+[GEMINI] ✅ Réponse reçue | modèle : gemini-3.8-flash | tokens : {"promptTokenCount":4774,"candidatesTokenCount":313,"totalTokenCount":5573,"trafficType":"ON_DEMAND","promptTokensDetails":[{"modality":"TEXT","tokenCount":1050},{"modality":"IMAGE","tokenCount":3724}],"candidatesTokensDetails":[{"modality":"TEXT","tokenCount":313}],"thoughtsTokenCount":486}
+[ANALYSE] Requête reçue : fichier="Acte d_engagement Thobie - ALVIVA.pdf" | mime=application/pdf | base64=3200484 car. | aiClient=OK | quota bloqué=false
+[GEMINI] Appel en cours → gemini-3.8-flash / global
+[GEMINI] ✅ Réponse reçue | modèle : gemini-3.8-flash | tokens : {"promptTokenCount":9030,"candidatesTokenCount":300,"totalTokenCount":9910,"trafficType":"ON_DEMAND","promptTokensDetails":[{"modality":"IMAGE","tokenCount":7980},{"modality":"TEXT","tokenCount":1050}],"candidatesTokensDetails":[{"modality":"TEXT","tokenCount":300}],"thoughtsTokenCount":580}
+[ANALYSE] Requête reçue : fichier="Devis n°10529 complément au marché pour éloignement du groupe ballon ECS Thermodynamique Thobie.pdf" | mime=application/pdf | base64=2116156 car. | aiClient=OK | quota bloqué=false
+[GEMINI] Appel en cours → gemini-3.8-flash / global
+[GEMINI] ✅ Réponse reçue | modèle : gemini-3.8-flash | tokens : {"promptTokenCount":3192,"candidatesTokenCount":258,"totalTokenCount":3952,"trafficType":"ON_DEMAND","promptTokensDetails":[{"modality":"TEXT","tokenCount":1064},{"modality":"IMAGE","tokenCount":2128}],"candidatesTokensDetails":[{"modality":"TEXT","tokenCount":258}],"thoughtsTokenCount":502}
+[ANALYSE] Requête reçue : fichier="Facture Alviva - Mai 2026.pdf" | mime=application/pdf | base64=596324 car. | aiClient=OK | quota bloqué=false
+[GEMINI] Appel en cours → gemini-3.8-flash / global
+[GEMINI] ✅ Réponse reçue | modèle : gemini-3.8-flash | tokens : {"promptTokenCount":2647,"candidatesTokenCount":255,"totalTokenCount":3439,"trafficType":"ON_DEMAND","promptTokensDetails":[{"modality":"TEXT","tokenCount":1051},{"modality":"IMAGE","tokenCount":1596}],"candidatesTokensDetails":[{"modality":"TEXT","tokenCount":255}],"thoughtsTokenCount":537}

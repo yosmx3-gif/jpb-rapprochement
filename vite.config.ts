@@ -8,48 +8,31 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
+       //jacques studio '@': path.resolve(import.meta.dirname, '.'),
        '@': path.resolve(__dirname, '.'),
        // jacques '@': path.resolve(import.meta.dirname, '.'),
       },
     },
-    // jacques server: {
-    // jacques  // HMR is disabled in AI Studio via DISABLE_HMR env var.
-    // jacques  // Do not modify—file watching is disabled to prevent flickering during agent edits.
-    // jacques  hmr: process.env.DISABLE_HMR !== 'true',
-    // jacques  // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-    // jacques  watch: process.env.DISABLE_HMR === 'true' ? null : {},
-    // jacques},
-
-    // debut ajouter par jacques seconde version
+    //jacques studio server: {
+    //jacques studio  hmr: process.env.DISABLE_HMR !== 'true',
+    //jacques studio  watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    //jacques studio},
+    // debut ajouter par jacques 3eme  version
     server: {
-      hmr: false,
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    port: 8080, // S'assure que Vite écoute sur le port par défaut de Cloud Shell
+    allowedHosts: true as const, // Autorise l'URL générée par Cloud Shell
+    hmr: {
+      protocol: 'wss',
+      clientPort: 443, // Force le client à passer par le port HTTPS sécurisé du cloud
     },
+    watch: process.env.DISABLE_HMR === 'true' ? null : {},
+  },
+    // fin ajouter par jacques 3eme version
     // debut ajouter par jacques seconde version
-
-    // debut ajouter par jacques première version
     // jacques server: {
-    // jacques   // jacques port: 3000,
-    // jacques   port: 8080,
-    // jacques   host: true,
-    // jacques   // jacques allowedHosts: true,
-    // jacques   allowedHosts: ['.cloudshell.dev'],
-    // jacques   // Force le protocole HTTPS sécurisé officiel de Google Cloud Shell
-    // jacques   hmr: {
-    // jacques     clientPort: 443,
-    // jacques   },
-    // jacques   // Ajoute la redirection pour que l'interface puisse parler au serveur
-    // jacques   proxy: {
-    // jacques     '/api': {
-    // jacques       target: 'http://localhost:3000',
-    // jacques       changeOrigin: true,
-    // jacques       secure: false,
-    // jacques     }
-    // jacques   },
-    // jacques   // Conserve la désactivation du scan de fichiers pour économiser le processeur
+    // jacques   hmr: false,
     // jacques   watch: process.env.DISABLE_HMR === 'true' ? null : {},
     // jacques },
     // fin ajouter par jacques seconde version
   };
-
 });

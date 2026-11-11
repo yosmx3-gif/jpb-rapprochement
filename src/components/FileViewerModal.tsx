@@ -14,6 +14,8 @@ interface FileViewerModalProps {
     tauxTVA?: number;
     date?: string;
     numero?: string;
+    justification?: string;
+    isMultimodal?: boolean;
   } | null;
   onSaveCorrection?: (updatedData: {
     montantHT: number;
@@ -48,10 +50,17 @@ export const FileViewerModal: React.FC<FileViewerModalProps> = ({
               <h3 className="text-sm font-bold text-slate-900 truncate max-w-sm">
                 <span className="block truncate">{fileInfo.name}</span>
               </h3>
-              <span className="text-[11px] text-slate-500 font-medium">
-                <span className="inline-block">{fileInfo.category}</span>
-                <span> · Document BTP</span>
-              </span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[11px] text-slate-500 font-medium">
+                  <span className="inline-block">{fileInfo.category}</span>
+                  <span> · Document BTP</span>
+                </span>
+                {fileInfo.isMultimodal ? (
+                  <span className="text-[9px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-200">
+                    Gemini 3.8 Flash Multimodal
+                  </span>
+                ) : null}
+              </div>
             </div>
           </div>
           <button
@@ -74,6 +83,22 @@ export const FileViewerModal: React.FC<FileViewerModalProps> = ({
               <span className="block">{fileInfo.path}</span>
             </p>
           </div>
+
+          {/* Justification de repérage spatial */}
+          {fileInfo.justification ? (
+            <div className={`p-3 rounded-lg border ${
+              fileInfo.isMultimodal
+                ? 'bg-indigo-50/80 border-indigo-200 text-indigo-950'
+                : 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+            }`}>
+              <div className="font-semibold text-[11px] flex items-center gap-1.5 mb-1">
+                <span>{fileInfo.isMultimodal ? 'Repérage visuel dans la mise en page (Gemini 3.8 Flash) :' : 'Source certifiée :'}</span>
+              </div>
+              <p className="text-[11px] leading-relaxed">
+                <span className="block">{fileInfo.justification}</span>
+              </p>
+            </div>
+          ) : null}
 
           {/* Aperçu du contenu ou texte extrait */}
           <div>

@@ -1,50 +1,67 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+console.log('[CONFIG] GCP_PROJECT_ID =', process.env.GCP_PROJECT_ID ? 'défini' : 'MANQUANT', '| PORT =', process.env.PORT);
+const clientDir = import.meta.dirname;
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-app.use(express.json({ limit: '15mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.get('/api/ping', (_req, res) => res.send('VERSION-LOGS-09NOV'));
 
-// Initialisation sécurisée du client GoogleGenAI côté serveur
-// jacques let aiClient: GoogleGenAI | null = null;
-// jacques try {
-// jacques   aiClient = new GoogleGenAI({
-// jacques     apiKey: process.env.GEMINI_API_KEY,
-// jacques     httpOptions: {
-// jacques       headers: {
-// jacques         'User-Agent': 'aistudio-build',
-// jacques       },
-// jacques     },
-// jacques   });
-// jacques } catch (e) {
-// jacques   console.warn('Initialisation Gemini API :', e);
-// jacques }
+// Initialisation sécurisée du client GoogleGenAI côté serveur (Support Vertex AI Google Cloud & Gemini API Studio)
+// jacques studio let aiClient: GoogleGenAI | null = null;
+// jacques studio try {
+// jacques studio   if (process.env.GCP_PROJECT_ID) {
+// jacques studio     aiClient = new GoogleGenAI({
+// jacques studio       vertexai: true,
+// jacques studio       project: process.env.GCP_PROJECT_ID,
+// jacques studio       location: process.env.GCP_LOCATION || 'us-central1',
+// jacques studio       httpOptions: {
+// jacques studio         headers: {
+// jacques studio           'User-Agent': 'aistudio-build',
+// jacques studio         },
+// jacques studio       },
+// jacques studio     });
+// jacques studio     console.log('✅ Client Google Cloud Vertex AI initialisé avec succès !');
+// jacques studio   } else {
+// jacques studio     aiClient = new GoogleGenAI({
+// jacques studio       apiKey: process.env.GEMINI_API_KEY,
+// jacques studio       httpOptions: {
+// jacques studio         headers: {
+// jacques studio           'User-Agent': 'aistudio-build',
+// jacques studio         },
+// jacques studio       },
+// jacques studio     });
+// jacques studio     console.log('✅ Client Google GenAI Studio initialisé avec succès !');
+// jacques studio   }
+// jacques studio } catch (e) {
+// jacques studio   console.warn('Initialisation Gemini API :', e);
+// jacques studio }
 
 //debut ajout jacques
 // Initialisation sécurisée du client GoogleGenAI côté serveur pour utiliser vos 300 $
 let aiClient: GoogleGenAI | null = null;
 try {
-  aiClient = new GoogleGenAI({
+  if (!process.env.GCP_PROJECT_ID) throw new Error('GCP_PROJECT_ID manquant dans .env');
+    aiClient = new GoogleGenAI({
     vertexai: true,                         // Active la bascule vers Google Cloud
     project: process.env.GCP_PROJECT_ID,    // Va lire l'ID dans votre fichier .env
-    location: 'us-central1',                // Région par défaut de traitement des données
+    location: 'global',
+    //jacques location: 'us-central1',                // Région par défaut de traitement des données
     httpOptions: {
       headers: {
         'User-Agent': 'aistudio-build',
       },
     },
   });
-  console.log('✅ Client Google Cloud Vertex AI initialisé avec succès !');
+ console.log(`✅ Client Vertex AI initialisé | projet=${process.env.GCP_PROJECT_ID} | location=global`);
 } catch (e) {
   console.warn('Initialisation Gemini API Google Cloud :', e);
 }
@@ -286,13 +303,198 @@ function localFallbackAnalysis(content: string, fileName?: string, categoryHint?
     siret,
     retenueGarantiePct: 5,
     isMontantExtrait,
+    isMultimodal: false,
     justification: isMontantExtrait ? justification : 'Montant non trouvé dans le document.',
   };
 }
 
-// Endpoint d'analyse certifié BTP haute précision (0 quota, 0 latence, 100% autonome)
+// --------------------------------------------------------------------------------------
+// ENDPOINT MULTIMODAL GEMINI 3.8 FLASH : Analyse spatiale visuelle de la mise en page
+// --------------------------------------------------------------------------------------
+app.post('/api/analyze-multimodal', async (req, res) => {
+  const { fileBase64, mimeType, fileName, categoryHint, textFallback } = req.body;
+console.log(`[ANALYSE] Requête reçue : fichier="${fileName}" | mime=${mimeType} | base64=${fileBase64 ? fileBase64.length : 0} car. | aiClient=${aiClient ? 'OK' : 'NULL'} | quota bloqué=${Date.now() < quotaExhaustedUntil}`);
+
+  // Si pas de données binaires, fallback immédiat
+  if (!fileBase64 || typeof fileBase64 !== 'string') {
+    if (textFallback && typeof textFallback === 'string' && textFallback.trim().length > 0) {
+      return res.json(localFallbackAnalysis(textFallback, fileName, categoryHint));
+    }
+    return res.json({
+      category: categoryHint || 'autre',
+      montantTTC: 0,
+      montantHT: 0,
+      tauxTVA: 20,
+      isMontantExtrait: false,
+      isMultimodal: false,
+      justification: 'Fichier vide ou données binaires non fournies.',
+    });
+  }
+
+  // Si pas de client IA ou quota temporairement restreint, bascule directe
+  if (!aiClient || Date.now() < quotaExhaustedUntil) {
+    console.warn('[ANALYSE] ⚠️ Gemini NON appelé (client absent ou quota bloqué) → secours local');
+    if (textFallback && typeof textFallback === 'string' && textFallback.trim().length > 0) {
+      return res.json(localFallbackAnalysis(textFallback, fileName, categoryHint));
+    }
+  }
+
+  const cleanMimeType = mimeType && mimeType.includes('/') ? mimeType.split(';')[0].trim() : 'application/pdf';
+
+  const systemPrompt = `Tu es un expert vérificateur et métreur BTP français certifié, chargé d'auditer les documents financiers de chantiers (Actes d'Engagement, Marchés, Factures, Situations de travaux, Avenants).
+
+INSTRUCTIONS STRICTES D'ANALYSE SPATIALE VISUELLE :
+Ne te fie pas à un simple flux textuel brut : analyse directement la mise en page visuelle, les tableaux, les encadrés et la disposition des colonnes du document.
+
+1. POUR LES ACTES D'ENGAGEMENT (AE, Marché, Contrat) :
+- Repère visuellement la clause "Article 2 : Montant du marché" (ou "Article 2 - Prix du marché").
+- Identifie impérativement la case ou la ligne intitulée "Total T.T.C." ou "Montant T.T.C." (ne confonds jamais avec un sous-montant d'acompte, un prix unitaire ou un taux comme 41,67).
+- Extrais le montant TTC exact ainsi que le taux de TVA indiqué (20%, 10%, 5.5% ou 0%).
+- Si seul le HT est stipulé dans l'Article 2, calcule le TTC. Si le TTC est présent, calcule HT = TTC / (1 + TVA/100).
+- Repère la date de signature de l'artisan ou du maître d'ouvrage, la raison sociale de l'entreprise titulaire et son SIRET.
+
+2. POUR LES FACTURES & SITUATIONS DE TRAVAUX :
+- Regarde visuellement en bas de page / pied de document le tableau récapitulatif de facturation.
+- Repère le "Net à payer TTC", "Total à payer TTC" ou "Net à verser".
+- Repère le "Total HT" ou "Montant des travaux HT", le taux de TVA appliqué, la date d'émission et le numéro de facture.
+
+3. JUSTIFICATION DE REPÉRAGE SPATIAL :
+- Indique précisément dans 'justification' où et comment le montant a été repéré visuellement dans la mise en page (ex: "Article 2, encadré 2.1 Total T.T.C. : 17 435,61 €" ou "Tableau récapitulatif en pied de facture, ligne Net à payer : 3 240,00 €").
+
+Renvoie EXCLUSIVEMENT un objet JSON conforme au schéma.`;
+
+  try {
+    console.log('[GEMINI] Appel en cours → gemini-3.8-flash / global');
+    const response = await aiClient!.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              inlineData: {
+                data: fileBase64,
+                mimeType: cleanMimeType,
+              },
+            },
+            {
+              text: `Nom du fichier : "${fileName || 'document.pdf'}".\nIndication de catégorie présumée : "${categoryHint || 'auto'}".\nAnalyse visuellement la mise en page originale de ce document BTP et extrais les données financières requises.`,
+            },
+          ],
+        },
+      ],
+      config: {
+        systemInstruction: systemPrompt,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            category: {
+              type: Type.STRING,
+              description: "Type de document: 'acte_engagement', 'facture', 'avenant' ou 'autre'",
+            },
+            montantTTC: {
+              type: Type.NUMBER,
+              description: "Montant TTC extrait (pour AE: Total TTC Article 2 ; pour Facture: Net à payer TTC)",
+            },
+            montantHT: {
+              type: Type.NUMBER,
+              description: "Montant HT extrait ou déduit (TTC / (1 + TVA/100))",
+            },
+            tauxTVA: {
+              type: Type.NUMBER,
+              description: "Taux de TVA en pourcentage (ex: 20, 10, 5.5, 0)",
+            },
+            date: {
+              type: Type.STRING,
+              description: "Date d'émission ou de signature au format YYYY-MM-DD",
+            },
+            numero: {
+              type: Type.STRING,
+              description: "Numéro de la facture ou du marché",
+            },
+            entreprise: {
+              type: Type.STRING,
+              description: "Raison sociale du titulaire / entreprise émettrice",
+            },
+            siret: {
+              type: Type.STRING,
+              description: "Numéro SIRET ou SIREN",
+            },
+            justification: {
+              type: Type.STRING,
+              description: "Description de l'emplacement spatial visuel précis du montant",
+            },
+            clausesParticulieres: {
+              type: Type.STRING,
+              description: "Clauses ou observations notables éventuelles",
+            },
+          },
+          required: ['category', 'montantTTC', 'montantHT', 'tauxTVA', 'justification'],
+        },
+      },
+    });
+    console.log('[GEMINI] ✅ Réponse reçue | modèle :', response.modelVersion, '| tokens :', JSON.stringify(response.usageMetadata));
+
+    const parsedJson = JSON.parse(response.text || '{}');
+    let montantTTC = typeof parsedJson.montantTTC === 'number' ? Math.round(parsedJson.montantTTC * 100) / 100 : 0;
+    const tauxTVA = typeof parsedJson.tauxTVA === 'number' ? parsedJson.tauxTVA : 20;
+    let montantHT = typeof parsedJson.montantHT === 'number' ? Math.round(parsedJson.montantHT * 100) / 100 : 0;
+
+    if (montantTTC > 0 && montantHT === 0) {
+      montantHT = Math.round((montantTTC / (1 + tauxTVA / 100)) * 100) / 100;
+    } else if (montantHT > 0 && montantTTC === 0) {
+      montantTTC = Math.round(montantHT * (1 + tauxTVA / 100) * 100) / 100;
+    }
+
+    const isMontantExtrait = Boolean(montantTTC > 0 || montantHT > 0);
+
+    return res.json({
+      category: parsedJson.category || categoryHint || 'facture',
+      montantTTC,
+      montantHT,
+      tauxTVA,
+      date: parsedJson.date || undefined,
+      numero: parsedJson.numero || undefined,
+      entreprise: parsedJson.entreprise || undefined,
+      siret: parsedJson.siret || undefined,
+      justification: parsedJson.justification || 'Analyse multimodale spatiale Gemini 3.8 Flash effectuée avec succès.',
+      clausesParticulieres: parsedJson.clausesParticulieres || undefined,
+      retenueGarantiePct: 5,
+      isMontantExtrait,
+      isMultimodal: true,
+    });
+  } catch (err: any) {
+    // jacques console.warn(`[Multimodal Gemini] Erreur d'analyse sur "${fileName}" :`, err?.message || err);
+    console.error(`[GEMINI] ❌ Erreur sur "${fileName}" | status=${err?.status} | code=${err?.code} | message=${err?.message}`);
+
+    if (err?.status === 429 || err?.message?.includes('RESOURCE_EXHAUSTED')) {
+      quotaExhaustedUntil = Date.now() + 60000;
+    }
+
+    // Basculement transparent de secours
+    if (textFallback && typeof textFallback === 'string' && textFallback.trim().length > 0) {
+      const fallbackResult = localFallbackAnalysis(textFallback, fileName, categoryHint);
+      fallbackResult.justification = `Secours sémantique local (IA temporairement indisponible) : ${fallbackResult.justification}`;
+      return res.json(fallbackResult);
+    }
+
+    return res.json({
+      category: categoryHint || 'autre',
+      montantTTC: 0,
+      montantHT: 0,
+      tauxTVA: 20,
+      isMontantExtrait: false,
+      isMultimodal: false,
+      justification: `Erreur d'analyse visuelle : ${err?.message || 'Fichier non décodable'}.`,
+    });
+  }
+});
+
+// Endpoint d'analyse textuelle classique (rétrocompatibilité)
 app.post('/api/analyze-document', (req, res) => {
   const { content, fileName, categoryHint } = req.body;
+  console.log('[ANALYSE-TEXTE] Route locale (regex), aucun appel Gemini');
 
   if (!content || typeof content !== 'string' || content.trim().length === 0) {
     return res.json({
@@ -301,20 +503,24 @@ app.post('/api/analyze-document', (req, res) => {
       montantHT: 0,
       tauxTVA: 20,
       isMontantExtrait: false,
+      isMultimodal: false,
       justification: 'Document sans texte extractible (scan image sans OCR ou fichier vide).',
     });
   }
 
-  // Traitement direct certifié BTP (B.2 et B.3) sans quota ni blocage
   return res.json(localFallbackAnalysis(content, fileName, categoryHint));
 });
 
 // Initialisation du serveur Full-Stack Express avec Vite
 async function startServer() {
-  if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.resolve(__dirname, 'dist')));
+  const distDir = path.resolve(clientDir, 'dist');
+  const distIndex = path.resolve(distDir, 'index.html');
+  const hasDist = fs.existsSync(distIndex);
+
+  if (process.env.NODE_ENV === 'production' && hasDist) {
+    app.use(express.static(distDir));
     app.get('*', (req, res) => {
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+      res.sendFile(distIndex);
     });
   } else {
     const vite = await createViteServer({
